@@ -33,21 +33,31 @@ bringtogether<- function(a,b){
         print('encounters in combined')
         print(length(unique(combined$Encounter.Identifier)))
 }
-
 #adt is the original data table
 bdt[,patient.identifier:=as.character(patient.identifier)]
 setkey(bdt,patient.identifier)
+
 #lowercase names
 setnames(adt,names(adt),tolower(names(adt)))
+
 #convert to date
 adt[,ed.arrival.date:=mdy_hms(as.character(ed.arrival.date))]
+
 #dates that are between a range
+#note - cannot perform OR binary search operations, only AND binary search 
+#operations.  must use vector search for R (or create weird index thing)
 jan2011 <- as.POSIXlt.date("2011-01-01", "%Y-%m-%d",tz="UTC")
-dec2011 <- as.POSIXlt.date("2012-12-31", "%Y-%m-%d",tz="UTC")
+dec2011 <- as.POSIXlt.date("2011-12-31", "%Y-%m-%d",tz="UTC")
 jan2013 <- as.POSIXlt.date("2013-01-01", "%Y-%m-%d",tz="UTC")
 dec2013 <- as.POSIXlt.date("2013-12-31", "%Y-%m-%d",tz="UTC")
-cdt[ed.arrival.date<jan2011,ed.arrival.date:=NA]
-#try adt[bdt]
-bdt<-adt[(unclass(ED.Arrival.Date)>1),mdy_hms(ED.Arrival.Date)]
+cdt[((ed.arrival.date<jan2011)|(ed.arrival.date>dec2011)),ed.arrival.date:=NA]
+#Check this patient has 1 visit in 2011 as well as visits before and after
+#View(bdt["980209",ed.arrival.date])
+#View(cdt["980209",ed.arrival.date])
+
 #tabulates the total number of factor events in a list populated by a single dataframe
-cdt<-adt[,(sum(unclass(ED.Arrival.Date)>1)),by=Patient.Identifier]
+ddt<-cdt[!which(is.na(ed.arrival.date)),(sum(unclass(ed.arrival.date)>1)),by=patient.identifier]
+#check that numbers are correct with this. this patient has 11 visits
+#cdt["532390",ed.arrival.date,by=ed.arrival.date]
+
+
