@@ -7,7 +7,6 @@ setkey(adt,patient.identifier)
 
 
 #convert to date
-cdt[,diagnosis.date:=(mdy_hms(as.character(cdt$diagnosis.date)))]
 #remove rows that have dates outside the area of interest
 jan2011 <- as.POSIXlt.date("2011-01-01", "%Y-%m-%d",tz="UTC")
 dec2011 <- as.POSIXlt.date("2011-12-31", "%Y-%m-%d",tz="UTC")
