@@ -1,63 +1,37 @@
-a<-read.csv("/Users/tcd8/Documents/Med School/3rd year/Duke Requirements/Research/Data/DukeWell/Intervention/hospitalencounter.csv")
-
-
-whoisdead <- function(a){
-#Are you dead? data.frame = a
-        for(i in nrow(a)){
-                if(a$Patient.Death.Indicator[i] != "ALIVE"){
-                        print(a$Patient.Identifier)
-                }
-        }
-}
-
-# Add on a new data frame .GlobalEnv
-bringtogether<- function(a,b){
-#        x<-join(a,b,by=c("Patient.Identifier"),type="full")
-#        x<-merge(a,b,by=c("Patient.Identifier","Encounter.Identifier"),all=TRUE)
-        x<-merge(a,b,by=c("Patient.Identifier","Encounter.Identifier"),all=TRUE)
-        assign("combined",x, envir= .GlobalEnv)
-#        print('patients in a')
-#        print(length(unique(a$Patient.Identifier)))
-#        print('encounters in a')
-#        print(length(unique(a$Encounter.Identifier)))
-#        print('patients in b')
-#        print(length(unique(b$Patient.Identifier)))
-#        print('encounters in b')
-#        print(length(unique(b$Encounter.Identifier)))
-        print('number of patients you should have')
-        print(length(unique(b$Patient.Identifier))+length(unique(a$Patient.Identifier))-length(unique(match(a$Patient.Identifier,b$Patient.Identifier))))
-        print('number of encounters you should have')
-        print(length(unique(b$Encounter.Identifier))+length(unique(a$Encounter.Identifier))-length(unique(match(a$Encounter.Identifier,b$Encounter.Identifier))))
-        print('patients in combined')
-        print(length(unique(combined$Patient.Identifier)))
-        print('encounters in combined')
-        print(length(unique(combined$Encounter.Identifier)))
-}
-#adt is the original data table
-bdt[,patient.identifier:=as.character(patient.identifier)]
-setkey(bdt,patient.identifier)
-
-#lowercase names
-setnames(adt,names(adt),tolower(names(adt)))
-
+utilizationcleaner<-function(input.dt=adt,output.dt="cleanutil"){
 #convert to date
-adt[,ed.arrival.date:=mdy_hms(as.character(ed.arrival.date))]
+        input.dt[,ed.arrival.date:=mdy_hms(as.character(ed.arrival.date))]
+        input.dt[,admit.date:=mdy_hms(as.character(admit.date))]
+# for post-control        input.dt[,arrival.date:=mdy_hms(as.character(arrival.date))]
 
 #dates that are between a range
 #note - cannot perform OR binary search operations, only AND binary search 
 #operations.  must use vector search for R (or create weird index thing)
-jan2011 <- as.POSIXlt.date("2011-01-01", "%Y-%m-%d",tz="UTC")
-dec2011 <- as.POSIXlt.date("2011-12-31", "%Y-%m-%d",tz="UTC")
-jan2013 <- as.POSIXlt.date("2013-01-01", "%Y-%m-%d",tz="UTC")
-dec2013 <- as.POSIXlt.date("2013-12-31", "%Y-%m-%d",tz="UTC")
-cdt[((ed.arrival.date<jan2011)|(ed.arrival.date>dec2011)),ed.arrival.date:=NA]
-#Check this patient has 1 visit in 2011 as well as visits before and after
-#View(bdt["980209",ed.arrival.date])
-#View(cdt["980209",ed.arrival.date])
+        jan2011 <- as.POSIXlt.date("2011-01-01", "%Y-%m-%d",tz="UTC")
+        dec2011 <- as.POSIXlt.date("2011-12-31", "%Y-%m-%d",tz="UTC")
+        jan2013 <- as.POSIXlt.date("2013-01-01", "%Y-%m-%d",tz="UTC")
+        dec2013 <- as.POSIXlt.date("2013-12-31", "%Y-%m-%d",tz="UTC")
+# for post-control input.dt[(arrival.date>jan2013&arrival.date<dec2013)|(ed.arrival.date>jan2013&ed.arrival.date<dec2013)|(admit.date>jan2013&admit.date<dec2013)]
+        input.dt[((ed.arrival.date<jan2013)|(ed.arrival.date>dec2013)|(is.na(ed.arrival.date))),ed.arrival.date:=0]
+        input.dt[((admit.date<jan2013)|(admit.date>dec2013)|(is.na(admit.date))),admit.date:=0]
 
-#tabulates the total number of factor events in a list populated by a single dataframe
-ddt<-cdt[!which(is.na(ed.arrival.date)),(sum(unclass(ed.arrival.date)>1)),by=patient.identifier]
-#check that numbers are correct with this. this patient has 11 visits
+#tabulates the total number of hospitalizations and ed visits
+        cdt<-input.dt[,list((sum(unclass(ed.arrival.date)>1)),(sum(unclass(admit.date)>1))),
+                by=patient.identifier]
+        setnames(cdt,c("V1","V2"),c("edvisits","hospitalizations"))
+        assign(output.dt,cdt,envir=.GlobalEnv)
+#check that numbers are correct with this. this patient has 10 ed visits
 #cdt["532390",ed.arrival.date,by=ed.arrival.date]
+        
+}
+
+#extra cleaner for encounter dates this ensures that a person had an encounter both during 2011 and during 2013
+input.dt[,arrival.date:=mdy_hms(as.character(arrival.date))]
+adt<-interenc[((arrival.date>jan2011)&(arrival.date<dec2011))
+              |((ed.arrival.date>jan2011)&(ed.arrival.date<dec2011))
+              |((admit.date>jan2011)&(admit.date<dec2011))]
+cont11and13<-merge(cont2011,cont2013,
+                   by=c("patient.identifier","encounter.identifier",
+                        "arrival.date"),all=TRUE)
 
 
